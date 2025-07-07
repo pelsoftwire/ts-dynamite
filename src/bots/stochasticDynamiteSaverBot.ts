@@ -113,26 +113,26 @@ class Bot {
 
     // TODO: make code more clear
     private getHighStakesChances (gamestate: Gamestate) : Map<BotSelection, number> {
-        let chances = new Map<BotSelection, number> ( [ ["D", 6], ["W", 1], ["R", 3] ] )// "R" used for all rps to retain typing
+        let chances = new Map<BotSelection, number> ( [ ['D', 6], ['W', 1], ['R', 3] ] )// "R" used for all rps to retain typing
 
         for (var round of this.stochasticRounds) {
             let stochasticRound = gamestate.rounds[round];
             let winner : number = this.getWinner(stochasticRound);
             let roundChoice : BotSelection = stochasticRound.p1;
 
-            if (roundChoice == "D" || roundChoice == "W") {
-                chances[stochasticRound.p1] = Math.max(1, chances[stochasticRound.p1] + winner);
+            if (roundChoice == 'D' || roundChoice == 'W') {
+                chances.set(stochasticRound.p1, Math.max(1, chances.get(stochasticRound.p1) + winner));
             } else {
-                chances["R"] = Math.max(1, chances["R"] + winner);
+                chances.set('R', Math.max(1, chances.get(stochasticRound.p1) + winner));
             }
         }
 
         if (this.getBombsUsed(gamestate) >= 100) {
-            chances.delete("D")
+            chances.delete('D')
         }
 
         if (this.getBombsAgainst(gamestate) >= 100) {
-            chances.delete("W");
+            chances.delete('W');
         }
 
         return chances;
@@ -145,7 +145,7 @@ class Bot {
         );
     }
 
-    private getRandomChoiceFromMap(map : Map<any, number>) : any {
+    private getRandomChoiceFromMap(map : Map<BotSelection, number>) : any {
         let total = this.getMapTotal(map);
         let random = Math.floor(Math.random() * (total-1)) + 1;
         let index = 0;
@@ -178,6 +178,9 @@ class Bot {
             } else {
                 // otherwise throw dynamite if possible
                 let highStakesChances : Map<BotSelection, number> = this.getHighStakesChances(gamestate);
+
+                console.log(highStakesChances);
+
                 let rng = Math.ceil(Math.random() * this.getMapTotal(highStakesChances));
 
                 this.stochasticRounds.push(gamestate.rounds.length);
