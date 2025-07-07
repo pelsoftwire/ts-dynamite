@@ -26,6 +26,8 @@ class Bot {
     private highStakesDynamiteChance : number = 0.8;
     private highStakesWaterbombChance : number = 0.1;
 
+    private stochasticRounds : number[] = [];
+
     private getEnemyHighStakeUsage(gamestate: Gamestate, tracking: BotSelection, threshold: number) : number {
         let highStakesRounds : number = 0;
         let trackedUses : number = 0;
@@ -84,9 +86,80 @@ class Bot {
         return bombs;
     }
 
+    private getWinner(prevRound : Round) : number {
+        let enemMove = prevRound.p2;
+        let myMove = prevRound.p1;
+
+        if (enemMove == myMove) return 0;
+
+        switch (myMove) {
+            case "D":
+                return enemMove == "W" ? -1 : 1;
+            case "R":
+                return (enemMove == "D" || enemMove == "P") ? -1 : 1;
+            case "P":
+                return (enemMove == "D" || enemMove == "S") ? -1 : 1;
+            case "S":
+                return (enemMove == "D" || enemMove == "R") ? -1 : 1;
+            case "W":
+                return (enemMove != "D") ? -1 : 1;
+        }
+    }
+
     private rps () : BotSelection {
         let rps : BotSelection[] = ["R","P","S"];
         return rps[Math.floor(Math.random() * 3)];
+    }
+
+    // TODO: make code more clear
+    private getHighStakesChances (gamestate: Gamestate) : Map<BotSelection, number> {
+        let chances = new Map<BotSelection, number> ( [ ["D", 1], ["W", 1], ["R", 1] ] )// "R" used for all rps to retain typing
+
+        for (var round of this.stochasticRounds) {
+            let stochasticRound = gamestate.rounds[round];
+            let winner : number = this.getWinner(stochasticRound);
+            let roundChoice : BotSelection = stochasticRound.p1;
+
+            if (roundChoice == "D" || roundChoice == "W") {
+                chances[stochasticRound.p1] = Math.max(1, chances[stochasticRound.p1] + winner);
+            } else {
+                chances["R"] = Math.max(1, chances["R"] + winner);
+            }
+        }
+
+        if (this.getBombsUsed(gamestate) >= 100) {
+            chances.delete("D")
+        }
+
+        if (this.getBombsAgainst(gamestate) >= 100) {
+            chances.delete("W");
+        }
+
+        return chances;
+    }
+
+    private getMapTotal(map: Map<any,number>) {
+        return Array.from(map.values()).reduce(
+            (accumulator, currentValue) => accumulator + currentValue,
+            0,
+        );
+    }
+
+    private getRandomChoiceFromMap(map : Map<any, number>) : any {
+        let total = this.getMapTotal(map);
+        let random = Math.floor(Math.random() * (total-1)) + 1;
+        let index = 0;
+        let keys = Array.from(map.keys());
+
+        let choice = undefined;
+        do {
+            choice = keys[index];
+            random -= map.get(keys[index]);
+            index++;
+        }
+        while (random > 0);
+
+        return choice;
     }
 
     makeMove(gamestate: Gamestate): BotSelection {
@@ -95,17 +168,7 @@ class Bot {
 
         // if stakes aren't high, don't waste a dynamite
         if (stakes < HIGHSTAKETHRESHOLD) {
-            // if stakes are "medium", then if they are bombing a lot, then play water, otherwise play rps
-            if (stakes >= MEDIUMSTAKESTHRESHOLD) {
-                let rng : number = Math.random();
-                if (this.getEnemyHighStakeUsage(gamestate, "D", MEDIUMSTAKESTHRESHOLD) >= MEDIUMSTAKESDYNAMITETHRESHOLD && this.getBombsAgainst(gamestate) < 100) {
-                    return "W";
-                } else {
-                    return this.rps();
-                }
-            } else {
-                return this.rps();
-            }
+            return this.rps();
         } else {
             // if stakes are high and opponent uses waterbomb a lot under high stakes, use rps
         if (this.getEnemyHighStakeUsage(gamestate, "W", HIGHSTAKETHRESHOLD) >= WATERBOMBOVERUSETHRESHOLD) {
@@ -114,18 +177,12 @@ class Bot {
                 return "W";
             } else {
                 // otherwise throw dynamite if possible
-                if (this.getBombsUsed(gamestate) < 100) {
-                    let rng = Math.random();
-                    if (rng <= this.highStakesDynamiteChance) {
-                        return "D";
-                    } else if (rng - this.highStakesDynamiteChance <= this.highStakesWaterbombChance) {
-                        return "W";
-                    } else {
-                        return this.rps();
-                    }
-                } else {
-                    return this.rps();
-                }
+                this.stochasticRounds.push(gamestate.rounds.length);
+
+                let highStakesChances : Map<BotSelection, number> = this.getHighStakesChances(gamestate);
+                let rng = Math.ceil(Math.random() * this.getMapTotal(highStakesChances));
+
+                return this.getRandomChoiceFromMap(highStakesChances);
             }
         }
     }
