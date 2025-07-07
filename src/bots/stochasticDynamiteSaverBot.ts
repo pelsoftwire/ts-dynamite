@@ -11,20 +11,16 @@ type Round = {
 }
 
 // config stuff
-const HIGHSTAKETHRESHOLD : number = 3;
-const MEDIUMSTAKESTHRESHOLD : number = 2;
+const HIGH_STAKE_THRESHOLD : number = 3;
 
-const WATERBOMBOVERUSETHRESHOLD : number = 0.85;
-const DYNAMITEBOMBOVERUSETHRESHOLD : number = 0.6;
+const WATERBOMB_OVERUSE_THRESHOLD : number = 0.85;
+const DYNAMITE_OVERUSE_THRESHOLD : number = 0.6;
 
-const MEDIUMSTAKESDYNAMITETHRESHOLD : number = 0.85;
+const DYNAMITE_CAPACITY = 100;
 
 import { Gamestate, BotSelection } from '../models/gamestate';
 
 class Bot {
-
-    private highStakesDynamiteChance : number = 0.8;
-    private highStakesWaterbombChance : number = 0.1;
 
     private stochasticRounds : number[] = [];
 
@@ -64,45 +60,33 @@ class Bot {
         return stakes;
     }
 
-    private getBombsUsed (gamestate: Gamestate) : number {
+    private getBombsUsed (gamestate: Gamestate, player: string) : number {
         let bombs : number = 0;
-        let iAm : string = "p1";
         for (var round of gamestate.rounds) {
-            if (round[iAm] == "D") {
+            if (round[player] == "D") {
                 bombs++;
             }
         }
         return bombs;
     }
 
-    private getBombsAgainst (gamestate: Gamestate) : number {
-        let bombs : number = 0;
-        let iAm : string = "p2";
-        for (var round of gamestate.rounds) {
-            if (round[iAm] == "D") {
-                bombs++;
-            }
-        }
-        return bombs;
-    }
+    private getWinner(previousRound : Round) : number {
+        let enemyMove = previousRound.p2;
+        let myMove = previousRound.p1;
 
-    private getWinner(prevRound : Round) : number {
-        let enemMove = prevRound.p2;
-        let myMove = prevRound.p1;
-
-        if (enemMove == myMove) return 0;
+        if (enemyMove == myMove) return 0;
 
         switch (myMove) {
             case "D":
-                return enemMove == "W" ? -1 : 1;
+                return enemyMove == "W" ? -1 : 1;
             case "R":
-                return (enemMove == "D" || enemMove == "P") ? -1 : 1;
+                return (enemyMove == "D" || enemyMove == "P") ? -1 : 1;
             case "P":
-                return (enemMove == "D" || enemMove == "S") ? -1 : 1;
+                return (enemyMove == "D" || enemyMove == "S") ? -1 : 1;
             case "S":
-                return (enemMove == "D" || enemMove == "R") ? -1 : 1;
+                return (enemyMove == "D" || enemyMove == "R") ? -1 : 1;
             case "W":
-                return (enemMove != "D") ? -1 : 1;
+                return (enemyMove != "D") ? -1 : 1;
         }
     }
 
@@ -111,7 +95,6 @@ class Bot {
         return rps[Math.floor(Math.random() * 3)];
     }
 
-    // TODO: make code more clear
     private getHighStakesChances (gamestate: Gamestate) : Map<BotSelection, number> {
         let chances = new Map<BotSelection, number> ( [ ['D', 6], ['W', 1], ['R', 3] ] )// "R" used for all rps to retain typing
 
@@ -127,11 +110,11 @@ class Bot {
             }
         }
 
-        if (this.getBombsUsed(gamestate) >= 100) {
+        if (this.getBombsUsed(gamestate, "p1") >= DYNAMITE_CAPACITY) {
             chances.delete('D')
         }
 
-        if (this.getBombsAgainst(gamestate) >= 100) {
+        if (this.getBombsUsed(gamestate, "p2") >= DYNAMITE_CAPACITY) {
             chances.delete('W');
         }
 
@@ -145,16 +128,16 @@ class Bot {
         );
     }
 
-    private getRandomChoiceFromMap(map : Map<BotSelection, number>) : any {
-        let total = this.getMapTotal(map);
-        let random = Math.floor(Math.random() * (total-1)) + 1;
+    private getRandomChoiceFromMap(choiceWeights : Map<BotSelection, number>) : BotSelection {
+        let total = this.getMapTotal(choiceWeights);
+        let random = Math.floor(Math.random() * total);
         let index = 0;
-        let keys = Array.from(map.keys());
+        let keys = Array.from(choiceWeights.keys());
 
         let choice = undefined;
         do {
             choice = keys[index];
-            random -= map.get(keys[index]);
+            random -= choiceWeights.get(keys[index]);
             index++;
         }
         while (random > 0);
@@ -167,13 +150,13 @@ class Bot {
         let rps : BotSelection[] = ["R","P","S"];
 
         // if stakes aren't high, don't waste a dynamite
-        if (stakes < HIGHSTAKETHRESHOLD) {
+        if (stakes < HIGH_STAKE_THRESHOLD) {
             return this.rps();
         } else {
             // if stakes are high and opponent uses waterbomb a lot under high stakes, use rps
-        if (this.getEnemyHighStakeUsage(gamestate, "W", HIGHSTAKETHRESHOLD) >= WATERBOMBOVERUSETHRESHOLD) {
+        if (this.getEnemyHighStakeUsage(gamestate, "W", HIGH_STAKE_THRESHOLD) >= WATERBOMB_OVERUSE_THRESHOLD) {
             return this.rps();
-            } else if (this.getEnemyHighStakeUsage(gamestate, "D", HIGHSTAKETHRESHOLD) >= DYNAMITEBOMBOVERUSETHRESHOLD && this.getBombsAgainst(gamestate) < 100) {
+            } else if (this.getEnemyHighStakeUsage(gamestate, "D", HIGH_STAKE_THRESHOLD) >= DYNAMITE_OVERUSE_THRESHOLD && this.getBombsUsed(gamestate, "p2") < DYNAMITE_CAPACITY) {
                 return "W";
             } else {
                 // otherwise throw dynamite if possible
