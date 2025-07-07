@@ -12,8 +12,8 @@ type Round = {
 
 // config stuff
 const HIGHSTAKETHRESHOLD : number = 3;
-const WATERBOMBOVERUSETHRESHOLD : number = 0.75;
-const DYNAMITEBOMBOVERUSETHRESHOLD : number = 0.9;
+const WATERBOMBOVERUSETHRESHOLD : number = 0.7;
+const DYNAMITEBOMBOVERUSETHRESHOLD : number = 0.8;
 
 import { Gamestate, BotSelection } from '../models/gamestate';
 
