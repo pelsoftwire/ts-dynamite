@@ -177,10 +177,10 @@ class Bot {
                 return "W";
             } else {
                 // otherwise throw dynamite if possible
-                this.stochasticRounds.push(gamestate.rounds.length);
-
                 let highStakesChances : Map<BotSelection, number> = this.getHighStakesChances(gamestate);
                 let rng = Math.ceil(Math.random() * this.getMapTotal(highStakesChances));
+
+                this.stochasticRounds.push(gamestate.rounds.length);
 
                 return this.getRandomChoiceFromMap(highStakesChances);
             }
