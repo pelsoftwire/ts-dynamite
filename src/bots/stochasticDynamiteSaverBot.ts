@@ -113,7 +113,7 @@ class Bot {
 
     // TODO: make code more clear
     private getHighStakesChances (gamestate: Gamestate) : Map<BotSelection, number> {
-        let chances = new Map<BotSelection, number> ( [ ["D", 1], ["W", 1], ["R", 1] ] )// "R" used for all rps to retain typing
+        let chances = new Map<BotSelection, number> ( [ ["D", 6], ["W", 1], ["R", 3] ] )// "R" used for all rps to retain typing
 
         for (var round of this.stochasticRounds) {
             let stochasticRound = gamestate.rounds[round];
