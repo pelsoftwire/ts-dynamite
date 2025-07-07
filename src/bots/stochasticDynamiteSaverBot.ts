@@ -183,7 +183,12 @@ class Bot {
 
                 this.stochasticRounds.push(gamestate.rounds.length);
 
-                return this.getRandomChoiceFromMap(highStakesChances);
+                let choice : BotSelection = this.getRandomChoiceFromMap(highStakesChances);
+                if (choice == "R") {
+                    return this.rps();
+                } else {
+                    return choice;
+                }
             }
         }
     }
